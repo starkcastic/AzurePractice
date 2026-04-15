@@ -1,65 +1,55 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy ASP.Net Core app to Azure Web App - my-dotnet-api-nishant
+name: Build and deploy ASP.NET Core app to Azure Web App
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: my-dotnet-api-nishant   # 🔥 CHANGE THIS
+  PROJECT_PATH: ./webApiForAzure/webApiForAzure.csproj         # 🔥 CHANGE THIS
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.x'
+          dotnet-version: '8.0.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.PROJECT_PATH }}
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+      - name: Build
+        run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+      - name: Publish
+        run: dotnet publish ${{ env.PROJECT_PATH }} -c Release -o publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          name: dotnet-app
+          path: publish
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
 
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
+      - name: Download artifact
+        uses: actions/download-artifact@v3
         with:
-          name: .net-app
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_A2E40287FCF949D48B2CB01D569D4202 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_AC9C7984D5874F2CB2E04F24C93DD8E3 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5CBFBE0F5E6A415EBEF6F8C00BCFDB24 }}
+          name: dotnet-app
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: 'my-dotnet-api-nishant'
-          slot-name: 'Production'
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
-          
